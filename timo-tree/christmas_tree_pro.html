@@ -278,6 +278,7 @@
             loadPredefinedImages();
             setupPostProcessing();
             setupEvents();
+            await initMediaPipe();
             
             const loader = document.getElementById('loader');
             loader.style.opacity = 0;
@@ -789,8 +790,7 @@
                 video: {
                     width: { ideal: 640 },
                     height: { ideal: 480 },
-                    frameRate: { ideal: 30 },
-                    facingMode: 'user'
+                    frameRate: { ideal: 30 }
                 }
             };
             if (navigator.mediaDevices?.getUserMedia) {
@@ -821,7 +821,7 @@
                 handLandmarker = await HandLandmarker.createFromOptions(vision, {
                     baseOptions: {
                         modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`,
-                        delegate: "CPU"
+                        delegate: "GPU"
                     },
                     runningMode: "VIDEO",
                     numHands: 1
