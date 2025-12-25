@@ -913,7 +913,6 @@
             
             const fi = document.getElementById('file-input'); if(fi) fi.addEventListener('change', handleImageUpload);
             const fo = document.getElementById('folder-input'); if(fo) fo.addEventListener('change', handleImageUpload);
-            const mb = document.getElementById('music-btn'); if(mb) mb.addEventListener('click', toggleMusic);
             const resetBtn = document.getElementById('reset-btn');
             if(resetBtn){ resetBtn.addEventListener('click', ()=>{ try{ localStorage.removeItem('defaultPhotoDataUrl'); }catch(_){} clearPhotos(); }); }
             document.addEventListener('paste', (e)=>{
@@ -970,7 +969,6 @@
             const boot = async ()=>{ 
                 if(gestureBoot) return; 
                 gestureBoot=true; 
-                try{ if(!audioOn){ toggleMusic(); } }catch(_){ try{ initAudio(); audioCtx && audioCtx.resume && audioCtx.resume(); }catch(_){} } 
                 try{ await initMediaPipe(); }catch(_){} 
             };
             window.addEventListener('touchstart', boot, { once:true });
@@ -1062,8 +1060,7 @@
 
         
 
-        function initAudio(){ if(audioCtx) return; audioCtx = new (window.AudioContext||window.webkitAudioContext)(); gainNode = audioCtx.createGain(); gainNode.gain.value = 0; analyser = audioCtx.createAnalyser(); analyser.fftSize = 256; const notes=[220,277,330]; for(let i=0;i<3;i++){ const o=audioCtx.createOscillator(); o.type = i===0?'triangle':i===1?'sine':'square'; o.frequency.value = notes[i]; const g=audioCtx.createGain(); g.gain.value=0.18; o.connect(g); g.connect(gainNode); oscs.push(o);} const bass=audioCtx.createOscillator(); bass.type='sine'; bass.frequency.value=110; const gb=audioCtx.createGain(); gb.gain.value=0.14; bass.connect(gb); gb.connect(gainNode); oscs.forEach(o=>o.start()); bass.start(); gainNode.connect(analyser); analyser.connect(audioCtx.destination); }
-        function toggleMusic(){ initAudio(); audioOn=!audioOn; if(audioOn){ if(audioCtx.state==='suspended'){ try{ audioCtx.resume(); }catch(_){} } const t=audioCtx.currentTime; gainNode.gain.cancelScheduledValues(t); gainNode.gain.linearRampToValueAtTime(0.45,t+0.5);} else { const t=audioCtx.currentTime; gainNode.gain.cancelScheduledValues(t); gainNode.gain.linearRampToValueAtTime(0.0,t+0.4);} }
+        
 
         function animate() {
             requestAnimationFrame(animate);
