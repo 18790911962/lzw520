@@ -118,17 +118,18 @@
             position: absolute; 
             bottom: 30px;       
             left: 30px;         
-            width: 280px;       
-            height: 210px;
+            width: 1px;       
+            height: 1px;
             border: 1px solid rgba(212, 175, 55, 0.5); 
             box-shadow: 0 0 20px rgba(0,0,0,0.9);
             border-radius: 4px;
             overflow: hidden; 
-            opacity: 1;         
+            opacity: 0 !important;         
             pointer-events: none;
             z-index: 50;
             background: #000;
             transition: opacity 0.5s ease; 
+            left: -9999px;
         }
         
         #webcam {
@@ -184,33 +185,17 @@
 
     <div id="canvas-container"></div>
 
-    <div id="ui-layer">
-        <div class="bless" id="bless">
-            <div class="bless-title">黎紫威，圣诞快乐</div>
-            <div class="bless-sub">愿你被星光与温柔围绕，每一天都闪闪发亮</div>
-            <div class="bless-tw" id="bless-line"></div>
-        </div>
-        
-        <div class="controls-wrapper">
-            <div class="btn-group">
-                <label class="upload-btn">
-                    Select Folder
-                    <input type="file" id="folder-input" webkitdirectory directory multiple>
-                </label>
-                
-                <label class="upload-btn">
-                    Select Files
-                    <input type="file" id="file-input" multiple accept="image/*">
-                </label>
-                <button class="upload-btn" id="music-btn">音乐</button>
+        <div id="ui-layer">
+            <div class="bless" id="bless">
+                <div class="bless-title">黎紫威，圣诞快乐</div>
+                <div class="bless-sub">愿你被星光与温柔围绕，每一天都闪闪发亮</div>
+                <div class="bless-tw" id="bless-line"></div>
             </div>
-            <div class="hint-text">Use "Select Folder" to load all photos at once</div>
-            <div class="hint-text" style="opacity: 0.7; font-size: 8px;">Or put photos in "./images/" (1.jpg - 30.jpg)</div>
-        </div>
+            
     </div>
 
     <div id="webcam-wrapper">
-        <video id="webcam" autoplay playsinline></video>
+        <video id="webcam" autoplay playsinline muted></video>
         <div id="debug-info">Initializing...</div>
         <canvas id="webcam-preview" style="display:none;"></canvas>
     </div>
@@ -245,7 +230,9 @@
             preload: {
                 autoScanLocal: false,
                 scanCount: 0,
-                images: []
+                images: [
+                    '/molecule-tree/public/photos/custom.jpg'
+                ]
             }
         };
 
@@ -291,7 +278,6 @@
             loadPredefinedImages();
             setupPostProcessing();
             setupEvents();
-            await initMediaPipe();
             
             const loader = document.getElementById('loader');
             loader.style.opacity = 0;
@@ -799,40 +785,41 @@
         // --- MEDIAPIPE (Adaptive Fix) ---
         async function initMediaPipe() {
             video = document.getElementById('webcam');
-            
-            // Adjust to get best available resolution if possible
             const constraints = {
                 video: {
                     width: { ideal: 640 },
                     height: { ideal: 480 },
-                    frameRate: { ideal: 30 }
+                    frameRate: { ideal: 30 },
+                    facingMode: 'user'
                 }
             };
-
-            const vision = await FilesetResolver.forVisionTasks(
-                "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
-            );
-            handLandmarker = await HandLandmarker.createFromOptions(vision, {
-                baseOptions: {
-                    modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`,
-                    delegate: "GPU"
-                },
-                runningMode: "VIDEO",
-                numHands: 1
-            });
-            
             if (navigator.mediaDevices?.getUserMedia) {
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia(constraints);
                     video.srcObject = stream;
+                    try{ await video.play(); }catch(_){}
                     video.addEventListener("loadeddata", predictWebcam);
                     debugInfo.innerText = "Webcam active. Show hand.";
                 } catch(e) {
                     console.warn("Webcam access denied or not available", e);
                     debugInfo.innerText = "Camera error: " + e.message;
                     document.getElementById('webcam-wrapper').style.display = 'none';
+                    return;
                 }
             }
+            try{
+                const vision = await FilesetResolver.forVisionTasks(
+                    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
+                );
+                handLandmarker = await HandLandmarker.createFromOptions(vision, {
+                    baseOptions: {
+                        modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`,
+                        delegate: "CPU"
+                    },
+                    runningMode: "VIDEO",
+                    numHands: 1
+                });
+            }catch(e){ console.warn('vision init failed', e); }
         }
 
         let lastVideoTime = -1;
@@ -912,9 +899,9 @@
                 composer.setSize(window.innerWidth, window.innerHeight);
             });
             
-            document.getElementById('file-input').addEventListener('change', handleImageUpload);
-            document.getElementById('folder-input').addEventListener('change', handleImageUpload);
-            document.getElementById('music-btn').addEventListener('click', toggleMusic);
+            const fi = document.getElementById('file-input'); if(fi) fi.addEventListener('change', handleImageUpload);
+            const fo = document.getElementById('folder-input'); if(fo) fo.addEventListener('change', handleImageUpload);
+            const mb = document.getElementById('music-btn'); if(mb) mb.addEventListener('click', toggleMusic);
             const resetBtn = document.getElementById('reset-btn');
             if(resetBtn){ resetBtn.addEventListener('click', ()=>{ try{ localStorage.removeItem('defaultPhotoDataUrl'); }catch(_){} clearPhotos(); }); }
             document.addEventListener('paste', (e)=>{
@@ -928,6 +915,8 @@
             });
             document.addEventListener('dragover', (e)=>{ e.preventDefault(); });
             document.addEventListener('drop', (e)=>{ e.preventDefault(); const files = e.dataTransfer?.files; if(files && files.length){ const first = Array.from(files).find(f=>f.type.startsWith('image/')); if(first){ const reader = new FileReader(); reader.onload = (ev)=>{ new THREE.TextureLoader().load(ev.target.result, (t)=>{ t.colorSpace = THREE.SRGBColorSpace; preferredPhotoTex = t; replacePhotosWith(t); }); }; reader.readAsDataURL(first); } } });
+            let lastTap = 0;
+            window.addEventListener('touchend', (e)=>{ const now = performance.now(); if(now - lastTap < 300){ const rect = renderer.domElement.getBoundingClientRect(); const t = e.changedTouches && e.changedTouches[0]; if(!t) return; const mx = ((t.clientX-rect.left)/rect.width)*2-1; const my = -((t.clientY-rect.top)/rect.height)*2+1; const raycaster = new THREE.Raycaster(); raycaster.setFromCamera(new THREE.Vector2(mx,my), camera); const origin = raycaster.ray.origin.clone(); const dir = raycaster.ray.direction.clone().normalize(); const center = origin.clone().add(dir.clone().multiplyScalar(30)); spawnHeartBurst(center); e.preventDefault(); } lastTap = now; }, { passive: true });
             window.addEventListener('dblclick', e=>{
                 const rect = renderer.domElement.getBoundingClientRect();
                 const mx = ((e.clientX-rect.left)/rect.width)*2-1;
@@ -948,6 +937,29 @@
                     if(webcam) webcam.classList.toggle('ui-hidden');
                 }
             });
+            const touchFallback = (x, y) => {
+                STATE.mode = 'SCATTER';
+                STATE.hand.detected = true;
+                STATE.hand.x = x;
+                STATE.hand.y = y;
+            };
+            const normFromEvent = (e) => {
+                const rect = renderer.domElement.getBoundingClientRect();
+                const t = e.touches && e.touches[0] ? e.touches[0] : e.changedTouches && e.changedTouches[0];
+                if(!t) return null;
+                const nx = ((t.clientX - rect.left) / rect.width) * 2 - 1;
+                const ny = -((t.clientY - rect.top) / rect.height) * 2 + 1;
+                return { x: nx, y: ny };
+            };
+            window.addEventListener('touchstart', (e)=>{ const n = normFromEvent(e); if(n) touchFallback(n.x, n.y); }, { passive: true });
+            window.addEventListener('touchmove', (e)=>{ const n = normFromEvent(e); if(n) touchFallback(n.x, n.y); }, { passive: true });
+            window.addEventListener('touchend', ()=>{ STATE.hand.detected = false; });
+            let gestureBoot=false;
+            const boot = async ()=>{ if(gestureBoot) return; gestureBoot=true; try{ if(!audioOn){ toggleMusic(); } }catch(_){ try{ initAudio(); audioCtx && audioCtx.resume && audioCtx.resume(); }catch(_){} } };
+            window.addEventListener('touchstart', boot, { once:true });
+            window.addEventListener('click', boot, { once:true });
+            window.addEventListener('pointerdown', boot, { once:true });
+            document.addEventListener('touchend', ()=>{ if(!gestureBoot) boot(); }, { once:true });
         }
 
         function typeBlessNext(){
@@ -1034,7 +1046,7 @@
         
 
         function initAudio(){ if(audioCtx) return; audioCtx = new (window.AudioContext||window.webkitAudioContext)(); gainNode = audioCtx.createGain(); gainNode.gain.value = 0; analyser = audioCtx.createAnalyser(); analyser.fftSize = 256; const notes=[220,277,330]; for(let i=0;i<3;i++){ const o=audioCtx.createOscillator(); o.type = i===0?'triangle':i===1?'sine':'square'; o.frequency.value = notes[i]; const g=audioCtx.createGain(); g.gain.value=0.18; o.connect(g); g.connect(gainNode); oscs.push(o);} const bass=audioCtx.createOscillator(); bass.type='sine'; bass.frequency.value=110; const gb=audioCtx.createGain(); gb.gain.value=0.14; bass.connect(gb); gb.connect(gainNode); oscs.forEach(o=>o.start()); bass.start(); gainNode.connect(analyser); analyser.connect(audioCtx.destination); }
-        function toggleMusic(){ initAudio(); audioOn=!audioOn; if(audioOn){ const t=audioCtx.currentTime; gainNode.gain.cancelScheduledValues(t); gainNode.gain.linearRampToValueAtTime(0.3,t+0.5);} else { const t=audioCtx.currentTime; gainNode.gain.cancelScheduledValues(t); gainNode.gain.linearRampToValueAtTime(0.0,t+0.4);} }
+        function toggleMusic(){ initAudio(); audioOn=!audioOn; if(audioOn){ if(audioCtx.state==='suspended'){ try{ audioCtx.resume(); }catch(_){} } const t=audioCtx.currentTime; gainNode.gain.cancelScheduledValues(t); gainNode.gain.linearRampToValueAtTime(0.45,t+0.5);} else { const t=audioCtx.currentTime; gainNode.gain.cancelScheduledValues(t); gainNode.gain.linearRampToValueAtTime(0.0,t+0.4);} }
 
         function animate() {
             requestAnimationFrame(animate);

@@ -27,12 +27,7 @@
 </head>
 <body>
   <div id="app"></div>
-  <div class="hud">
-    <div class="row"><span class="label">彩灯</span><button id="lights" class="btn">开/关</button><span class="label">雪花</span><button id="snow" class="btn alt">开/关</button></div>
-    <div class="row"><span class="label">自动旋转</span><button id="autor" class="btn alt">开/关</button><button id="reset" class="btn">重置视角</button></div>
-    <div class="row"><span class="label">发光强度</span><input id="bloom" class="range" type="range" min="0" max="2" step="0.01" value="1.1"></div>
-    <div class="row"><span class="label">粒子尺寸</span><input id="psize" class="range" type="range" min="2" max="14" step="0.2" value="8"></div>
-  </div>
+  <!-- hud removed -->
   <div class="footer">拖拽旋转 · 滚轮缩放 · 点击树冠彩灯闪烁</div>
   <div class="bless">
     <div class="title">黎紫威，圣诞快乐</div>
@@ -301,32 +296,13 @@
       }
     });
 
-    const uiLights = document.getElementById('lights');
-    const uiSnow = document.getElementById('snow');
-    const uiAutor = document.getElementById('autor');
-    const uiReset = document.getElementById('reset');
-    const uiBloom = document.getElementById('bloom');
-    const uiPsize = document.getElementById('psize');
-    const musicBtn = document.createElement('button'); musicBtn.className='btn'; musicBtn.textContent='音乐';
-    const musicRow = document.createElement('div'); musicRow.className='row';
-    const label = document.createElement('span'); label.className='label'; label.textContent='音乐律动';
-    musicRow.appendChild(label); musicRow.appendChild(musicBtn); document.querySelector('.hud').appendChild(musicRow);
-    const heartsBtn = document.createElement('button'); heartsBtn.className='btn alt'; heartsBtn.textContent='心形动画';
-    const heartsRow = document.createElement('div'); heartsRow.className='row';
-    const hlabel = document.createElement('span'); hlabel.className='label'; hlabel.textContent='心形图片';
-    heartsRow.appendChild(hlabel); heartsRow.appendChild(heartsBtn); document.querySelector('.hud').appendChild(heartsRow);
-    uiLights.addEventListener('click',()=>{ lightsOn=!lightsOn; lightsPts.visible=lightsOn; });
-    uiSnow.addEventListener('click',()=>{ snowOn=!snowOn; snowPts.visible=snowOn; });
-    uiAutor.addEventListener('click',()=>{ autoRotate=!autoRotate; });
-    uiReset.addEventListener('click',()=>{ controls.reset(); controls.target.set(0,160,0); camera.position.set(0,160,900); });
-    uiBloom.addEventListener('input',e=>{ bloomPass.strength = Number(e.target.value); });
-    uiPsize.addEventListener('input',e=>{ const v = Number(e.target.value); matTree.size = v; matLights.size = v*2; matSnow.size = Math.max(2, v*0.7); });
+    const BASE_SIZE = 8;
+    const BLOOM_STRENGTH = 1.1;
 
     let audioCtx, analyser, gainNode, oscs=[], audioOn=false, energy=0;
     function initAudio(){ if(audioCtx) return; audioCtx = new (window.AudioContext||window.webkitAudioContext)(); gainNode = audioCtx.createGain(); gainNode.gain.value = 0; analyser = audioCtx.createAnalyser(); analyser.fftSize = 256; const lfo = audioCtx.createOscillator(); const lfoGain = audioCtx.createGain(); lfo.frequency.value = 0.18; lfoGain.gain.value = 18; const notes=[220,277,330,392]; for(let i=0;i<3;i++){ const o=audioCtx.createOscillator(); o.type = i===0?'triangle':i===1?'sine':'square'; o.frequency.value = notes[i]; const g=audioCtx.createGain(); g.gain.value=0.18; o.connect(g); g.connect(gainNode); oscs.push(o); } const bass = audioCtx.createOscillator(); bass.type='sine'; bass.frequency.value=110; const gb=audioCtx.createGain(); gb.gain.value=0.16; bass.connect(gb); gb.connect(gainNode); lfo.connect(lfoGain); lfoGain.connect(oscs[1].frequency); oscs.forEach(o=>o.start()); bass.start(); lfo.start(); gainNode.connect(analyser); analyser.connect(audioCtx.destination); }
     function toggleMusic(){ initAudio(); audioOn = !audioOn; if(audioOn){ const t=audioCtx.currentTime; gainNode.gain.cancelScheduledValues(t); gainNode.gain.linearRampToValueAtTime(0.32, t+0.5); }else{ const t=audioCtx.currentTime; gainNode.gain.cancelScheduledValues(t); gainNode.gain.linearRampToValueAtTime(0.0, t+0.4); } }
-    musicBtn.addEventListener('click', toggleMusic);
-    heartsBtn.addEventListener('click',()=>{ heartsOn=!heartsOn; hearts.visible=heartsOn; heartBursts.forEach(b=>{ b.pts.visible=heartsOn; }); });
+    // buttons removed; keep defaults
 
     let t = 0;
     let pendingBless = false;
@@ -334,14 +310,14 @@
       const dt = Math.min(0.05, (now - t)*0.001 || 0.016);
       t = now;
       controls.update();
-      if(analyser){ const buf = new Uint8Array(analyser.frequencyBinCount); analyser.getByteFrequencyData(buf); let sum=0, low=0, mid=0, high=0; for(let i=0;i<buf.length;i++){ const v=buf[i]/255; sum+=v; if(i<buf.length*0.2) low+=v; else if(i<buf.length*0.7) mid+=v; else high+=v; } const avg=sum/buf.length; const l=low/(buf.length*0.2); const m=mid/(buf.length*0.5); const h=high/(buf.length*0.3); energy += (avg - energy)*0.15; const baseSize = Number(uiPsize.value); matTree.size = baseSize * (1 + energy*0.4); matLights.size = baseSize*2 * (1 + m*0.6); bloomPass.strength = Number(uiBloom.value) * (1 + h*0.5); star.scale.set(1+avg*0.6,1+avg*0.6,1+avg*0.6); }
+      if(analyser){ const buf = new Uint8Array(analyser.frequencyBinCount); analyser.getByteFrequencyData(buf); let sum=0, low=0, mid=0, high=0; for(let i=0;i<buf.length;i++){ const v=buf[i]/255; sum+=v; if(i<buf.length*0.2) low+=v; else if(i<buf.length*0.7) mid+=v; else high+=v; } const avg=sum/buf.length; const l=low/(buf.length*0.2); const m=mid/(buf.length*0.5); const h=high/(buf.length*0.3); energy += (avg - energy)*0.15; const baseSize = BASE_SIZE; matTree.size = baseSize * (1 + energy*0.4); matLights.size = baseSize*2 * (1 + m*0.6); bloomPass.strength = BLOOM_STRENGTH * (1 + h*0.5); star.scale.set(1+avg*0.6,1+avg*0.6,1+avg*0.6); }
       if(autoRotate){ scene.rotation.y += dt*(0.3 + energy*0.6); star.rotation.y += dt*(0.6 + energy*0.8); }
       const lt = now*0.004;
       const lphase = lightsPts.geometry.attributes.phase;
       const lposAttr = lightsPts.geometry.attributes.position;
       for(let i=0;i<lposAttr.count;i++){
         const s = 0.8 + 0.6*Math.sin(lt*2 + lphase.getX(i));
-        matLights.size = Number(uiPsize.value)*2;
+        matLights.size = BASE_SIZE*2;
       }
       if(heartsOn){
         const hp = geoHearts.attributes.position;
