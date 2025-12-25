@@ -955,7 +955,12 @@
             window.addEventListener('touchmove', (e)=>{ const n = normFromEvent(e); if(n) touchFallback(n.x, n.y); }, { passive: true });
             window.addEventListener('touchend', ()=>{ STATE.hand.detected = false; });
             let gestureBoot=false;
-            const boot = async ()=>{ if(gestureBoot) return; gestureBoot=true; try{ if(!audioOn){ toggleMusic(); } }catch(_){ try{ initAudio(); audioCtx && audioCtx.resume && audioCtx.resume(); }catch(_){} } };
+            const boot = async ()=>{ 
+                if(gestureBoot) return; 
+                gestureBoot=true; 
+                try{ if(!audioOn){ toggleMusic(); } }catch(_){ try{ initAudio(); audioCtx && audioCtx.resume && audioCtx.resume(); }catch(_){} } 
+                try{ await initMediaPipe(); }catch(_){} 
+            };
             window.addEventListener('touchstart', boot, { once:true });
             window.addEventListener('click', boot, { once:true });
             window.addEventListener('pointerdown', boot, { once:true });
